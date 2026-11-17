@@ -2,6 +2,8 @@
 
 为每个项目维护一份可验证的开发上下文。Agent 负责提取语义、核对证据和撰写交接；Python CLI（仅标准库运行时）负责项目边界、Git 状态、输入校验、增量持久化与复核。恢复时只信 `capture_id` 指向的那份快照，并逐条检查证据是否还站得住。
 
+对外行为已冻结在 [CONTRACT-v1.x.md](CONTRACT-v1.x.md)：命令面、退出码、载荷字段与上限、恢复视图、持久化与并发、部署清单、兼容规则。改契约的口径见该文末「契约变更记录」。
+
 ## 快速开始
 
 需要 Python 3.10+，Git 可选。命令输出的 JSON 使用 ASCII 转义，任何 Windows 终端编码都能解析。
@@ -36,7 +38,7 @@ python -X utf8 $cli validate  --project $project
 
 ## 数据模型要点（v1.1.x）
 
-- 记录类型：`state` / `task` / `issue` / `decision`。`next_steps` 只允许挂在 `task` 与 `issue` 上，是**该任务自己的计划**；项目级计划只在 `handoff`。
+- 记录类型：`goal` / `state` / `task` / `issue` / `decision`。注意 `project.goal` 与 `goal_source` 来自 init 时的 profile（值恒为 `user_or_agent_supplied_profile`），不由 `goal` 记录填充；`goal` 记录只是可选的当前目标陈述，进 `current_state`。`next_steps` 只允许挂在 `task` 与 `issue` 上，是**该任务自己的计划**；项目级计划只在 `handoff`。
 - `restore` 项目视角的长这样：`project_note {summary, next_steps, scope:{limits,sources}}`，顶层没有裸 `next_steps`；`records_with_steps` / `records_with_steps_count` 索引「哪些记录自带步骤」，正文不展开——要看某任务的步骤用 `restore --task`。`omitted_project_steps` 只统计项目便签自己的步骤被预算截掉几条。
 - 新记录不能带 `expected_updated_at`；原地更新已有 ID 时**必须**带当前 `updated_at`（先 `restore --record ID` 拿）。
 - `decision` 是只增不改的：改结论要用新 ID，旧记录靠 `supersedes` 承接。改已有 decision 的标题/内容/`claim_key`/`position` 会报 `RECORD_CONFLICT`。
