@@ -54,3 +54,9 @@
 - 下一阶段优先补齐 DSHarness 原生行为、剩余行为场景和真实项目复测，再扩充 Git 配置兼容性和受控的历史归档工具。
 
 原始提示、未经改写的模型回复、事件轨迹、哈希清单和可重放项目均在独立演示与证据包中。
+
+## 补充 · v1.1.x 与并发压测（2026-11-17）
+
+v1.1.0 起：`next_steps` 从项目级 handoff 下沉到 `task` / `issue` 记录，新增 `restore --task SELECTOR`；v1.1.1 补 `records_with_steps` 索引；v1.1.2 把项目视角合并为 `project_note {summary, next_steps, scope}`。自动化测试由 37 项扩到 47 项，全部通过（`Ran 47 tests ... OK`）。
+
+并发压测（新增 `tests/test_concurrent_capture.py`，5 用例）：两个与四个真实 python 进程同时 `capture` 同一项目，10 轮对撞每轮恰好一次提交、记录数与快照链各 +1；落败方一律安全失败（`WRITE_BUSY`，偶尔 `CAPTURE_CONFLICT`，均 exit 5），`validate` 保持 PASS，`snapshots/`、`records/` 每个对象 SHA-256 自校验一致，无 `.pending-*` 残留。探针 12 轮真实双进程的失败码为 `WRITE_BUSY` 12/12；`CAPTURE_CONFLICT` 用陈旧 `expected_capture_id` 单独用例固定。真实多任务恢复（A/B 各写下一步、只恢复 A）已在 DSH 与 Codex 两个宿主的新会话复验通过。
