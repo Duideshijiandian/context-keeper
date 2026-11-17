@@ -62,3 +62,13 @@ Use an explicit `claim_key` for a shared factual proposition or decision dimensi
 - `write.lock` is the writer lock. The OS releases it when the process exits.
 
 RESTORE is the supported presentation layer. Hand-edited Markdown copies are not authoritative. Timestamps are timezone-aware ISO 8601 in UTC. Immutable object names hash the UTF-8 JSON bytes. Older published captures remain reachable through the manifest and parent chain.
+
+## Concurrent writers
+
+Every mutating command holds the exclusive, non-blocking lock on `.context-keeper/write.lock` for the whole write (`scripts/storage.py:84-98`; `msvcrt.locking` on Windows, `fcntl.flock` on POSIX). The operating system releases it when the process exits, including after an interruption. A second writer that cannot take the lock fails at once with `WRITE_BUSY` (exit 5) and never enters the critical section, so it stages and publishes nothing.
+
+Inside the lock, CAPTURE re-reads the manifest (`scripts/storage.py:250`) and compares the payload's `expected_capture_id` with `last_capture_id` (`scripts/storage.py:255-256`). A stale ID fails with `CAPTURE_CONFLICT` (exit 5) before any record or snapshot is written. Re-sending a byte-identical payload under the same Git identity is not a conflict: it is treated as a duplicate and returns `changed: false` with the current manifest (`scripts/storage.py:251-259`).
+
+Publication order is immutable objects first, manifest last. Before replacing the manifest the writer re-reads it and compares it with the copy taken under the lock (`scripts/storage.py:340-341`); a mismatch - a writer that bypassed the lock or a manual edit - fails again with `CAPTURE_CONFLICT`, so no snapshot is left half-published. A failed or interrupted write leaves at most unreachable immutable objects in `records/` or `snapshots/`; the next snapshot chains from the last published manifest, and `restore --at <capture_id>` keeps every earlier one readable.
+
+Neither failure retries automatically: run `status` for the current `last_capture_id` and prepare a fresh payload. Measured 2026-11-17: 12 rounds of two real processes left the loser with `WRITE_BUSY` 12/12; the automated races (10 rounds, plus one 4-process round) each committed exactly once, kept `validate` at `PASS`, left every `records/` and `snapshots/` file hashing to its own name, and produced no `.pending-*` residue (`tests/test_concurrent_capture.py`).

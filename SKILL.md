@@ -2,7 +2,7 @@
 name: context-keeper
 description: Initialize, save, hand off, restore, or validate a project's development context when the user asks. Record technical decisions, unresolved issues, and evidence for cross-session work. 仅在用户要求初始化项目上下文、保存开发进度、跨会话交接、恢复历史、记录技术决策或验证上下文时使用。 Skip ordinary coding, Q&A, translation, and chat without a project-context request.
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
 ---
 
 # Context Keeper

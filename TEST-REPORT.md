@@ -60,3 +60,7 @@
 v1.1.0 起：`next_steps` 从项目级 handoff 下沉到 `task` / `issue` 记录，新增 `restore --task SELECTOR`；v1.1.1 补 `records_with_steps` 索引；v1.1.2 把项目视角合并为 `project_note {summary, next_steps, scope}`。自动化测试由 37 项扩到 47 项，全部通过（`Ran 47 tests ... OK`）。
 
 并发压测（新增 `tests/test_concurrent_capture.py`，5 用例）：两个与四个真实 python 进程同时 `capture` 同一项目，10 轮对撞每轮恰好一次提交、记录数与快照链各 +1；落败方一律安全失败（`WRITE_BUSY`，偶尔 `CAPTURE_CONFLICT`，均 exit 5），`validate` 保持 PASS，`snapshots/`、`records/` 每个对象 SHA-256 自校验一致，无 `.pending-*` 残留。探针 12 轮真实双进程的失败码为 `WRITE_BUSY` 12/12；`CAPTURE_CONFLICT` 用陈旧 `expected_capture_id` 单独用例固定。真实多任务恢复（A/B 各写下一步、只恢复 A）已在 DSH 与 Codex 两个宿主的新会话复验通过。
+
+## 补充 · v1.1.3（2026-11-17）
+
+v1.1.3 只补文档与发版卫生，运行行为不变。并发语义（排它锁、`WRITE_BUSY` 与 `CAPTURE_CONFLICT` 的分界、发布前二次比对、幂等重发返回 `changed: false`）写进 `references/data-schema.md` 的 Concurrent writers 一节，并带 `storage.py` 行锚点；README 的「并发语义」与它逐条对应。新增 `scripts/release_checksums.py`：发版时从 `sync_deploy.FILES` 生成 13 个运行时文件的 SHA-256 校验单与回滚命令，作为 release 说明正文与附件；私有仓库的 `/releases/tag/...` 对未登录访客 404，已在 README 注明需另建公开说明页或迁公开仓库。自动化测试由 47 项扩到 49 项（新增 `tests/test_release_checksums.py` 2 项），全部通过（`Ran 49 tests ... OK`）；两宿主 `sync_deploy --check` 通过。
