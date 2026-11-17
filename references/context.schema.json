@@ -1,0 +1,764 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Context Keeper V1 capture payload",
+  "$ref": "#/$defs/capture",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "sha": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "oid": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 64,
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "uuid": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 36,
+      "pattern": "^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$"
+    },
+    "time": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 40,
+      "format": "date-time"
+    },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "project_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "goal": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 480
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tech_stack": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "exclude_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 260
+          },
+          "minItems": 0,
+          "maxItems": 40
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "visible_session",
+              "user_export",
+              "user_input",
+              "project_files",
+              "git",
+              "test_run",
+              "task_tracker"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 7
+        },
+        "limits": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 360
+        }
+      },
+      "required": [
+        "sources",
+        "limits"
+      ],
+      "additionalProperties": false
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 420
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "minItems": 0,
+          "maxItems": 12
+        }
+      },
+      "required": [
+        "scope",
+        "summary",
+        "next_steps"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "file",
+            "test",
+            "git_commit",
+            "user",
+            "session",
+            "report",
+            "task"
+          ]
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000000
+        },
+        "commit": {
+          "$ref": "#/$defs/oid"
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "observed_at": {
+          "$ref": "#/$defs/time"
+        }
+      },
+      "required": [
+        "kind",
+        "locator"
+      ],
+      "additionalProperties": false
+    },
+    "record_input": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "enum": [
+            "goal",
+            "state",
+            "decision",
+            "issue",
+            "task"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 720
+        },
+        "status": {
+          "enum": [
+            "VERIFIED",
+            "REPORTED",
+            "UNVERIFIED",
+            "CONFLICTED",
+            "STALE"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0,
+          "maxItems": 12
+        },
+        "task_status": {
+          "enum": [
+            "TODO",
+            "IN_PROGRESS",
+            "BLOCKED",
+            "DONE",
+            "CANCELLED"
+          ]
+        },
+        "next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "minItems": 0,
+          "maxItems": 12
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "claim_key": {
+          "$ref": "#/$defs/id"
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 0,
+          "maxItems": 10
+        },
+        "expected_updated_at": {
+          "$ref": "#/$defs/time"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "content",
+        "status",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "enum": [
+            "goal",
+            "state",
+            "decision",
+            "issue",
+            "task"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 720
+        },
+        "status": {
+          "enum": [
+            "VERIFIED",
+            "REPORTED",
+            "UNVERIFIED",
+            "CONFLICTED",
+            "STALE"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0,
+          "maxItems": 12
+        },
+        "task_status": {
+          "enum": [
+            "TODO",
+            "IN_PROGRESS",
+            "BLOCKED",
+            "DONE",
+            "CANCELLED"
+          ]
+        },
+        "next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "minItems": 0,
+          "maxItems": 12
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "claim_key": {
+          "$ref": "#/$defs/id"
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 0,
+          "maxItems": 10
+        },
+        "created_at": {
+          "$ref": "#/$defs/time"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/time"
+        },
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "content",
+        "status",
+        "evidence",
+        "created_at",
+        "updated_at",
+        "baseline"
+      ],
+      "additionalProperties": false
+    },
+    "capture": {
+      "type": "object",
+      "properties": {
+        "expected_capture_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/record_input"
+          },
+          "minItems": 0,
+          "maxItems": 150
+        },
+        "handoff": {
+          "$ref": "#/$defs/handoff"
+        }
+      },
+      "required": [
+        "expected_capture_id",
+        "records",
+        "handoff"
+      ],
+      "additionalProperties": false
+    },
+    "git": {
+      "type": "object",
+      "properties": {
+        "git_available": {
+          "type": "boolean"
+        },
+        "git_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "git_head": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/oid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "working_tree_status": {
+          "enum": [
+            "clean",
+            "dirty",
+            "unknown",
+            "unavailable"
+          ]
+        },
+        "fingerprint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "status",
+              "path"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 50
+        },
+        "recent_commits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/oid"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "dirty_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150000
+        },
+        "read_scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 1,
+          "maxItems": 10
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "minItems": 0,
+          "maxItems": 12
+        }
+      },
+      "required": [
+        "git_available",
+        "git_branch",
+        "git_head",
+        "working_tree_status",
+        "fingerprint",
+        "changes",
+        "recent_commits",
+        "dirty_count",
+        "read_scope",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "record_link": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha"
+        }
+      },
+      "required": [
+        "id",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "capture_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/time"
+        },
+        "request_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_index": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/record_link"
+          },
+          "minItems": 0,
+          "maxItems": 5000
+        },
+        "handoff": {
+          "$ref": "#/$defs/handoff"
+        },
+        "git": {
+          "$ref": "#/$defs/git"
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "capture_id",
+        "parent",
+        "created_at",
+        "request_sha256",
+        "record_index",
+        "handoff",
+        "git"
+      ],
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "goal": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 480
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tech_stack": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "exclude_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 260
+          },
+          "minItems": 0,
+          "maxItems": 40
+        },
+        "created_at": {
+          "$ref": "#/$defs/time"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/time"
+        },
+        "last_capture_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot": {
+          "$ref": "#/$defs/sha"
+        },
+        "git_available": {
+          "type": "boolean"
+        },
+        "git_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "git_head": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/oid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "working_tree_status": {
+          "enum": [
+            "clean",
+            "dirty",
+            "unknown",
+            "unavailable"
+          ]
+        },
+        "fingerprint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "project_name",
+        "goal",
+        "tech_stack",
+        "exclude_paths",
+        "created_at",
+        "updated_at",
+        "last_capture_id",
+        "snapshot",
+        "git_available",
+        "git_branch",
+        "git_head",
+        "working_tree_status",
+        "fingerprint"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

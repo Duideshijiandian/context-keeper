@@ -1,0 +1,16 @@
+# project store written by context-keeper (local data, never committed)
+.context-keeper/
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# vendored test deps (installed with --target for offline runs)
+tests/pydeps/
+
+# editor / os noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
