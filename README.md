@@ -1,4 +1,4 @@
-# Context Keeper（v1.1.3）
+# Context Keeper（v1.2.0）
 
 为每个项目维护一份可验证的开发上下文。Agent 负责提取语义、核对证据和撰写交接；Python CLI（仅标准库运行时）负责项目边界、Git 状态、输入校验、增量持久化与复核。恢复时只信 `capture_id` 指向的那份快照，并逐条检查证据是否还站得住。
 
@@ -39,8 +39,9 @@ python -X utf8 $cli validate  --project $project
 ## 数据模型要点（v1.1.x）
 
 - 记录类型：`goal` / `state` / `task` / `issue` / `decision`。注意 `project.goal` 与 `goal_source` 来自 init 时的 profile（值恒为 `user_or_agent_supplied_profile`），不由 `goal` 记录填充；`goal` 记录只是可选的当前目标陈述，进 `current_state`。`next_steps` 只允许挂在 `task` 与 `issue` 上，是**该任务自己的计划**；项目级计划只在 `handoff`。
+- 默认加载用 `resumable_tasks` 选任务，每项含 ID、标题、任务状态和证据状态。只列 `IN_PROGRESS` / `TODO` / `BLOCKED`，同状态最近更新在前。缺状态的旧任务单列 `tasks_needing_status` 待确认，完成或取消任务退出续做清单。这两个完整索引独立于正文预算，选定后用 `restore --task ID` 加载。
 - `restore` 项目视角的长这样：`project_note {summary, next_steps, scope:{limits,sources}}`，顶层没有裸 `next_steps`；`records_with_steps` / `records_with_steps_count` 索引「哪些记录自带步骤」，正文不展开——要看某任务的步骤用 `restore --task`。`omitted_project_steps` 只统计项目便签自己的步骤被预算截掉几条。
-- 新记录不能带 `expected_updated_at`；原地更新已有 ID 时**必须**带当前 `updated_at`（先 `restore --record ID` 拿）。
+- 新记录不能带 `expected_updated_at`；追加已有 ID 的新版本时**必须**带当前 `updated_at`（先 `restore --record ID` 拿）。
 - `decision` 是只增不改的：改结论要用新 ID，旧记录靠 `supersedes` 承接。改已有 decision 的标题/内容/`claim_key`/`position` 会报 `RECORD_CONFLICT`。
 - `handoff.scope.sources` 枚举只有 `visible_session / user_export / user_input / project_files / git / test_run / task_tracker`。
 - 长度上限：`title` ≤120、`content` ≤720、`handoff.summary` ≤420、`scope.limits` ≤360、`next_steps` 每条 ≤240 且 ≤12 条、一次 capture ≤150 条记录。
@@ -63,7 +64,7 @@ python -X utf8 $cli validate  --project $project
 
 1. 改工作副本（唯一可改目录）。
 2. 新增运行时文件必须同步进 `scripts/sync_deploy.py` 的 `FILES` 元组，否则装不上。
-3. 跑测试，判据是 `Ran N tests ... OK`（当前 49 项）：
+3. 跑测试，判据是 `Ran N tests ... OK`（当前 54 项）：
 
    ```powershell
    $env:PYTHONPATH = 'F:/path/to/test-pydeps'   # 仅静态测试需要 PyYAML / jsonschema
@@ -98,7 +99,7 @@ python -X utf8 -B scripts/release_checksums.py --version X.Y.Z --previous X.Y.<�
 
 ## 测试与已知坑
 
-- 49 项自动化测试（`tests/`）：存储、恢复、按任务恢复、安全、部署一致性与并发压测、发版校验单。测试只用临时目录与故障注入，不碰真实项目。
+- 54 项自动化测试（`tests/`）：存储、恢复、按任务恢复、安全、部署一致性与并发压测、发版校验单。测试只用临时目录与故障注入，不碰真实项目。
 - PowerShell 下 unittest 的进度点走 stderr，会把整条命令显示成 `[exit code: 1]` 的假失败；判据只看 `Ran N tests ... OK` / `FAILED`。
 - `validate` 报 `EVIDENCE_CHANGED` 常见于 file 证据锚了逐轮覆盖写的文件（如交接文档）；decision 又不可原地改，通常只能接受为提示。要避免就别把 file 证据锚在每轮都会变的文件上。
 - 别在 capture 期间手工编辑或移动 `.context-keeper/`；manifest 是唯一发布点，旧快照与记录保持可读。

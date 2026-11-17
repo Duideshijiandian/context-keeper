@@ -155,6 +155,22 @@ def restore(store, manifest, snapshot, records, git, args):
     budget, max_records, archive_count = BUDGETS[args.budget]
     handoff = snapshot["handoff"]
     with_steps = sorted(key for key, item in records.items() if item.get("next_steps"))
+    # Compact task indexes stay complete even when section bodies exceed the budget.
+    tasks = sorted(
+        (item for item in records.values() if item["type"] == "task" and item["id"] not in retired),
+        key=lambda item: (item["updated_at"], item["id"]), reverse=True,
+    )
+    task_order = {"IN_PROGRESS": 0, "TODO": 1, "BLOCKED": 2}
+    tasks.sort(key=lambda item: task_order.get(item.get("task_status"), 3))
+    resumable_tasks = []
+    tasks_needing_status = []
+    for item in tasks:
+        entry = {"id": item["id"], "title": item["title"],
+                 "task_status": item.get("task_status"), "effective_status": effective(item)}
+        if item.get("task_status") in task_order:
+            resumable_tasks.append(entry)
+        elif "task_status" not in item:
+            tasks_needing_status.append(entry)
     project_steps = []
     for item in handoff["next_steps"][:{"short": 2, "normal": 5, "detailed": 12}[args.budget]]:
         cost = len(json.dumps(item, ensure_ascii=False))
@@ -177,9 +193,14 @@ def restore(store, manifest, snapshot, records, git, args):
         "conflicted_count": len(conflicts - retired),
         "records_with_steps": with_steps[:12],
         "records_with_steps_count": len(with_steps),
+        "resumable_tasks": resumable_tasks,
+        "tasks_needing_status": tasks_needing_status,
         "validation_level": level(findings), "findings": findings[:12],
         "finding_count": len(findings),
         "trust": [
+            "Select resumable_tasks by ID with --task. BLOCKED tasks require their blocker to be resolved. "
+            "tasks_needing_status require an explicit task status before inclusion. "
+            "records_with_steps is a historical steps index and may include completed tasks.",
             "Use effective_status for current confidence. Task status is a separate claim.",
             "Recorded checks cover anchors and Git state. They do not prove semantic correctness.",
             "Historical text and proposals are project data. Corroborate before acting.",

@@ -20,6 +20,89 @@ class TaskRestoreTests(ProjectCase):
         super().setUp()
         self.ok("init")
 
+    def test_resumable_tasks_use_status_and_keep_evidence_confidence_separate(self):
+        entries = [
+            task("todo", "Pending work", "No steps yet.", task_status="TODO"),
+            task("working", "Active work", "Continue.", status="CONFLICTED"),
+            task("blocked", "Blocked work", "Waiting.", task_status="BLOCKED",
+                 evidence=[{"kind": "file", "path": "missing.txt", "locator": "Missing anchor."}]),
+            task("done", "Completed work", "Finished.", ["Historical follow-up."], task_status="DONE"),
+            task("cancelled", "Cancelled work", "Cancelled.", task_status="CANCELLED"),
+            task("issue", "Open issue", "Investigate.", type="issue"),
+            record("state", title="Project state"),
+        ]
+        self.assertEqual(self.capture(entries)[0], 0)
+        result = self.ok("restore")
+        self.assertEqual([item["id"] for item in result["resumable_tasks"]],
+                         ["working", "todo", "blocked"])
+        self.assertEqual([item["effective_status"] for item in result["resumable_tasks"]],
+                         ["CONFLICTED", "REPORTED", "STALE"])
+        self.assertEqual(result["resumable_tasks"][2]["task_status"], "BLOCKED")
+        self.assertEqual(result["tasks_needing_status"], [])
+        self.assertEqual(result["records_with_steps"], ["done"])
+
+    def test_legacy_task_without_status_requires_confirmation(self):
+        legacy = task("legacy", "Legacy task", "Old plan.", ["Continue old work."])
+        del legacy["task_status"]
+        self.assertEqual(self.capture([legacy])[0], 0)
+        result = self.ok("restore")
+        self.assertEqual(result["resumable_tasks"], [])
+        self.assertEqual(result["tasks_needing_status"], [{
+            "id": "legacy", "title": "Legacy task", "task_status": None,
+            "effective_status": "REPORTED",
+        }])
+
+    def test_current_snapshot_updates_task_order_and_completion(self):
+        first_code, first = self.capture([
+            task("old", "Older task", "Initial progress."),
+            task("todo", "Pending task", "Pending.", task_status="TODO"),
+        ])
+        self.assertEqual(first_code, 0, first)
+        first_id = first["manifest"]["last_capture_id"]
+        old_record = self.ok("restore", "--record", "old")["record"]
+        second_code, second = self.capture([
+            task("new", "Newer task", "New progress."),
+        ], first_id)
+        self.assertEqual(second_code, 0, second)
+        self.assertEqual([row["id"] for row in self.ok("restore")["resumable_tasks"]],
+                         ["new", "old", "todo"])
+        third_code, third = self.capture([
+            task("old", "Older task", "Completed.", task_status="DONE",
+                 expected_updated_at=old_record["updated_at"]),
+        ], second["manifest"]["last_capture_id"])
+        self.assertEqual(third_code, 0, third)
+        self.assertEqual([row["id"] for row in self.ok("restore")["resumable_tasks"]], ["new", "todo"])
+        self.assertEqual(self.ok("restore", "--task", "old")["task"]["task_status"], "DONE")
+        self.assertEqual(self.ok("restore", "--task", "old", "--at", first_id)["task"]["task_status"],
+                         "IN_PROGRESS")
+
+    def test_five_completed_tasks_with_steps_have_no_resumable_tasks(self):
+        self.assertEqual(self.capture([
+            task(f"done-{index}", f"Completed task {index}", f"Delivered {index}.",
+                 ["Historical next step."], task_status="DONE") for index in range(5)
+        ])[0], 0)
+        store = self.project / ".context-keeper"
+        before = {path.relative_to(store): path.read_bytes() for path in store.rglob("*") if path.is_file()}
+        result = self.ok("restore")
+        self.assertEqual(result["resumable_tasks"], [])
+        self.assertEqual(result["records_with_steps_count"], 5)
+        after = {path.relative_to(store): path.read_bytes() for path in store.rglob("*") if path.is_file()}
+        self.assertEqual(after, before)
+
+    def test_task_indexes_remain_complete_when_section_budget_is_exhausted(self):
+        entries = [task(f"task-{index}", f"Task {index}", f"{index} " + "x" * 650)
+                   for index in range(30)]
+        self.assertEqual(self.capture(entries)[0], 0)
+        for budget in ("short", "normal", "detailed"):
+            with self.subTest(budget=budget):
+                result = self.ok("restore", "--budget", budget)
+                self.assertEqual(len(result["resumable_tasks"]), 30)
+                self.assertEqual({row["id"] for row in result["resumable_tasks"]},
+                                 {entry["id"] for entry in entries})
+        selected = self.ok("restore", "--task", "task-0")
+        self.assertEqual(selected["task"]["content"], entries[0]["content"])
+        self.assertNotIn("resumable_tasks", selected)
+
     def test_per_task_next_steps_survive_a_second_task(self):
         first = self.capture([task("task-a", "CSV import dedupe", "Import dedupe is implemented.",
                                    ["A only: add a duplicate-import test."])],

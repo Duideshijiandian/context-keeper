@@ -64,3 +64,7 @@ v1.1.0 起：`next_steps` 从项目级 handoff 下沉到 `task` / `issue` 记录
 ## 补充 · v1.1.3（2026-11-17）
 
 v1.1.3 只补文档与发版卫生，运行行为不变。并发语义（排它锁、`WRITE_BUSY` 与 `CAPTURE_CONFLICT` 的分界、发布前二次比对、幂等重发返回 `changed: false`）写进 `references/data-schema.md` 的 Concurrent writers 一节，并带 `storage.py` 行锚点；README 的「并发语义」与它逐条对应。新增 `scripts/release_checksums.py`：发版时从 `sync_deploy.FILES` 生成 13 个运行时文件的 SHA-256 校验单与回滚命令，作为 release 说明正文与附件；私有仓库的 `/releases/tag/...` 对未登录访客 404，已在 README 注明需另建公开说明页或迁公开仓库。自动化测试由 47 项扩到 49 项（新增 `tests/test_release_checksums.py` 2 项），全部通过（`Ran 49 tests ... OK`）；两宿主 `sync_deploy --check` 通过。
+
+## 补充 · v1.2.0（2026-11-17）
+
+默认恢复新增可续做任务清单与缺状态任务清单。新增 5 项自动化测试，覆盖状态筛选、证据状态独立、旧任务待确认、同 ID 新版本完成后退出、历史版本可查、五条 DONE 带步骤清单为空、恢复前后存储字节一致，以及三档预算下完整任务索引。全量 54 项通过，基线为 49 项。运行命令为 `python -X utf8 -B -m unittest discover -s tests -t tests`，依赖使用场景隔离的 `资产/测试/pydeps`。日志在场景 `交付/logs/test-resumable-tasks-20261117.log`。

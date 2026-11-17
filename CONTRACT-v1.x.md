@@ -85,6 +85,8 @@ evidence 单条：`kind` + `locator`（1–300）必填，`additionalProperties:
 
 ## 4. 恢复视图
 
+v1.2.0 新增完整的任务选择索引 `resumable_tasks` 和 `tasks_needing_status`，两个数组独立于正文预算和记录条数上限。每项包含 `id`、`title`、`task_status`、`effective_status`。只索引当前快照中的 `task`，排除已被替代记录。`resumable_tasks` 按 `IN_PROGRESS`、`TODO`、`BLOCKED` 排序，同状态最近更新在前，同时间按 ID 降序确定顺序；终态排除，缺状态任务进入 `tasks_needing_status`（状态返回 null，最近更新在前）。证据状态只作为提示，是否有 `next_steps` 不影响入选。现有 `records_with_steps` 仍按原口径返回。
+
 项目视角（默认）顶层键固定：`budget`、`project{id,name,goal,goal_source,tech_stack}`、`capture_id`、`project_note{summary,next_steps,scope}`、`sections{current_state,open_issues,verified_progress,key_decisions}`、`potentially_stale(+_count)`、`conflicted(+_count)`、`records_with_steps(+_count)`、`validation_level`、`findings`、`finding_count`、`omitted_records`、`omitted_project_steps`、`trust`，`detailed` 时另有 `history`，记录无 `next_steps` 的单任务视图另有 `next_steps_note`。
 
 - 顶层**没有**裸 `next_steps`；任务自己的步骤只在 `restore --task` 出现，或按 ID 列在 `records_with_steps`。
@@ -145,3 +147,4 @@ v1.x 内**不允许**（须 v2）：
 
 - 2026-11-17 · v1.1.3 基线：并发语义入 `references/data-schema.md`；`release_checksums.py` 生成部署清单校验单。运行时行为相对 v1.1.2 无变化。
 - 2026-11-17 · 本文档补入 main（v1.1.3 之后，未改动 `FILES`、未改运行时），把上述行为逐条冻结。
+- 2026-11-17 · v1.2.0：项目恢复视图新增 `resumable_tasks` 与 `tasks_needing_status`，默认技能展示以可续做任务选择为入口。沿用 schema_version 1、现有字段与计数口径，按 minor 发布。
